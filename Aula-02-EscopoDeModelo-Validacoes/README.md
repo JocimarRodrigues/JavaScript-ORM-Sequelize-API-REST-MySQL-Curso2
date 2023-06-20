@@ -252,3 +252,58 @@ Serviços de hospedagem em nuvem podem cobrar alguns serviços por uso, ou a cad
 ```
 É possível utilizar ferramentas para enviar requisições para a API sem necessariamente estar no ambiente da aplicação “oficial”, por exemplo via curl.
 ```
+
+## Validações personalizadas
+- Tu refaz os passos acima
+- Tu pode criar uma função dentro do validate e passar como parametro para ela o dado e dentro dela fazer tua lógica de validação
+Models/pessoas.js
+```js
+"use strict";
+module.exports = (sequelize, DataTypes) => {
+  const Pessoas = sequelize.define(
+    "Pessoas",
+    {
+      nome: {
+        type: DataTypes.STRING,
+        validate: {
+          funcaoValidadora: function (dado) { // Aqui
+            if (dado.length < 3) //
+              throw new Error("O campo deve ter mais de 3 caracteres"); //
+          }, //
+        },
+      },
+      ativo: DataTypes.BOOLEAN,
+      email: {
+        type: DataTypes.STRING,
+        validate: {
+          isEmail: {
+            args: true,
+            msg: "Dado do tipo e-mail inválidos",
+          },
+        },
+      },
+      role: DataTypes.STRING,
+    },
+    {
+      paranoid: true,
+      defaultScope: {
+        where: { ativo: true },
+      },
+      scopes: {
+        todos: { where: {} },
+      },
+    }
+  );
+  Pessoas.associate = function (models) {
+    Pessoas.hasMany(models.Turmas, {
+      foreignKey: "docente_id",
+    });
+    Pessoas.hasMany(models.Matriculas, {
+      foreignKey: "estudante_id",
+    });
+  };
+  return Pessoas;
+};
+
+```
+-  Validações de dados únicos IMPORTANTE: Tu vai usar isso para garantir que não tenha um nome repetido na tabela => https://cursos.alura.com.br/course/orm-nodejs-avancando-sequelize/task/79563

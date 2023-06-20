@@ -3,14 +3,25 @@ module.exports = (sequelize, DataTypes) => {
   const Pessoas = sequelize.define(
     "Pessoas",
     {
-      nome: DataTypes.STRING,
+      nome: {
+        type: DataTypes.STRING,
+        validate: {
+          funcaoValidadora: function (dado) {
+            if (dado.length < 3)
+              throw new Error("O campo deve ter mais de 3 caracteres");
+          },
+        },
+      },
       ativo: DataTypes.BOOLEAN,
-      email: {type: DataTypes.STRING, validate: {
-        isEmail: {
-          args: true,
-          msg: "Dado do tipo e-mail inválidos"
-        }
-      }},
+      email: {
+        type: DataTypes.STRING,
+        validate: {
+          isEmail: {
+            args: true,
+            msg: "Dado do tipo e-mail inválidos",
+          },
+        },
+      },
       role: DataTypes.STRING,
     },
     {
@@ -19,9 +30,9 @@ module.exports = (sequelize, DataTypes) => {
         where: { ativo: true },
       },
       scopes: {
-        todos: {where: {}},
+        todos: { where: {} },
         //etc: { constraint: valor}
-      }
+      },
     }
   );
   Pessoas.associate = function (models) {
