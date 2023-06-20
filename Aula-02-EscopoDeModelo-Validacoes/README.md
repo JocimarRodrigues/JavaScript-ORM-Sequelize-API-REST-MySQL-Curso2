@@ -1,0 +1,1 @@
+# Escopos de Modelo
