@@ -138,5 +138,35 @@ Caso alguma alteração gere erros ou bugs, é possível desfazê-la. Da mesma f
 Quando utilizamos ORMs para gerenciar bancos SQL, o termo “migração” se refere a esta funcionalidade que é comum aos ORMs em geral, não apenas ao Sequelize.
 ```
 
+# Restaurando Registros
 
+- Como o método Soft Delete não deleta de fato o Registro tu pode RESTAURAR um registro!
+- Para fazer isso basta usar o método restore do Sequelize
+- Tu faz isso no Controller
+Controllers/PessoaController.js
+```js
+  static async restauraPessoa(req, res) {
+    const { id } = req.params
+    try {
+      await database.Pessoas.restore( {where: {id: Number(id)}})
+      return res.status(200).json({mensagem: `id ${id} restaurado`})
+    } catch (error) {
+      return res.status(500).json(error.message)
+    }
+  }
+```
 
+- Feito isso, basta criar a rota para ele no pessoasRoute.js
+- A Rota tem que ser feita usando o POST
+pessoasRoute.js
+```js
+  .post('/pessoas/:id/restaura', PessoaController.restauraPessoa)
+```
+
+- Com isso, basta tu usar o postman com o método POST e informar o id da pessoa para restaurar
+```
+http://localhost:3000/pessoas/1/restaura
+```
+
+#### Explicando
+- O que aconteceu aqui é que quando tu fez o uso do método restore, ele simplesmente EXCLUIU o valor que estava na coluna deletedAt, com isso fazendo que quando tu busce novamente pela tabela pessoas o método GET vai buscar todos os usuários com o deletedAt que não esteja NULO.
