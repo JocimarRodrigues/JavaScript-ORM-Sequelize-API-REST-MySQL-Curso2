@@ -117,3 +117,138 @@ Routes/pessoasRoute.js
   .get('/pessoas/todos', PessoaController.pegaTodasAsPessoas)
 ```
 
+# Validando dados
+
+- - Foram percebidas algumas falhas de validação dos formulários por parte do front-end, o que resultou em dados de email inválidos no banco. É desejável que essa validação não seja responsabilidade exclusiva do front.
+
+### Como fazer isso?
+
+- Tu pode fazer usando o SQL usando o cmd CHECK, mas isso não é aprofundado no curso, se tu tiver que fazer isso com SQL, puro dá uma lida na documentação => https://www.w3schools.com/sql/sql_check.asp
+
+#### Tu vai usar o validations do Sequelize, para fazer a velidação.
+
+- Link da documentação => https://sequelize.org/docs/v6/core-concepts/validations-and-constraints/
+
+### Lembrar que essa validaçÕes são feitas no MODELO
+- Tu vai abrir um Objeto dentro do atributo usando {}
+- A primeira propriedade desse objeto tem que ser o tipo de dado, usando o type
+- A segunda propriedade é o validete que tu vai abrir como um OBJETO e passar qual validação que tu quer
+- Esse isEmail é uma validação padrão que tem no Sequelize
+- Dessa forma tu fez uma validação, mas tem como tu melhorar isso e passar mais propriedades pro validate
+Models/pessoas.js
+```js
+"use strict";
+module.exports = (sequelize, DataTypes) => {
+  const Pessoas = sequelize.define(
+    "Pessoas",
+    {
+      nome: DataTypes.STRING,
+      ativo: DataTypes.BOOLEAN,
+      email: {type: DataTypes.STRING, validate: { // Aqui
+        isEmail: true //
+      }},
+      role: DataTypes.STRING,
+    },
+    {
+      paranoid: true,
+      defaultScope: {
+        where: { ativo: true },
+      },
+      scopes: {
+        todos: {where: {}},
+      }
+    }
+  );
+  Pessoas.associate = function (models) {
+    Pessoas.hasMany(models.Turmas, {
+      foreignKey: "docente_id",
+    });
+    Pessoas.hasMany(models.Matriculas, {
+      foreignKey: "estudante_id",
+    });
+  };
+  return Pessoas;
+};
+
+```
+
+### Passando mais informações para o validate
+- Para fazer isso tu vai transformar o valor da propriedade de validação que tu pegou do Sequelize em um Objeto, no caso o isEmail
+- A 1 propriedade desse Objeto vai ser ARGS que vai ser o argumento da validação
+- A 2 propriedade desse objeto pode ser uma msg que tu vai mandar, caso a validação dê errada.
+Models/pessoas.js
+```js
+"use strict";
+module.exports = (sequelize, DataTypes) => {
+  const Pessoas = sequelize.define(
+    "Pessoas",
+    {
+      nome: DataTypes.STRING,
+      ativo: DataTypes.BOOLEAN,
+      email: {type: DataTypes.STRING, validate: {
+        isEmail: { // Aqui
+          args: true, //
+          msg: "Dado do tipo e-mail inválidos" //
+        }
+        //
+      }},
+      role: DataTypes.STRING,
+    },
+    {
+      paranoid: true,
+      defaultScope: {
+        where: { ativo: true },
+      },
+      scopes: {
+        todos: {where: {}},
+      }
+    }
+  );
+  Pessoas.associate = function (models) {
+    Pessoas.hasMany(models.Turmas, {
+      foreignKey: "docente_id",
+    });
+    Pessoas.hasMany(models.Matriculas, {
+      foreignKey: "estudante_id",
+    });
+  };
+  return Pessoas;
+};
+
+```
+#### Para testar isso use no postman
+```
+http://localhost:3000/pessoas POST
+```
+body 
+```json
+{
+        "nome": "Joao ",
+        "ativo": true,
+        "email": "jo",
+        "role": "estudante"
+}
+```
+- Vai aparecer um validation Error e a mensagem se estiver funcionando.
+
+##### Observações sobre Validação no Front versus Back
+
+- Validações feitas no front-end são muito úteis para melhorar a experiência de quem utiliza a aplicação, mas não substituem a validação no back-end.
+```
+Validações feitas no front-end ajudam na experiência de utilização, pois evitam o envio de requisições desnecessárias (o que pode consumir a conexão do usuário), mas não garantem a integridade dos dados enviados.
+```
+
+- Validações feitas no back-end devem ser levadas em conta nos custos de hospedagem em nuvem, pois é preciso fazer a requisição para então ser validada.
+```
+Serviços de hospedagem em nuvem podem cobrar alguns serviços por uso, ou a cada requisição feita. Um bom motivo para fazer a primeira validação no front é evitar requisições desnecessárias também por razões de custo.
+```
+
+- As validações feitas no front-end são mais fáceis de serem burladas por pessoas mal-intencionadas.
+```
+É possível alterar os dados de uma requisição, entre outras formas, a partir do próprio inspetor de código do navegador. Alguém com o conhecimento necessário pode passar por cima das regras de validação.
+```
+
+- Uma vez que a API é disponibilizada para o front-end, não é possível garantir que a requisição esteja realmente sendo enviada pela aplicação, então, por segurança, ela também deve ser feita no back-end.
+```
+É possível utilizar ferramentas para enviar requisições para a API sem necessariamente estar no ambiente da aplicação “oficial”, por exemplo via curl.
+```
