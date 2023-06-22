@@ -167,3 +167,73 @@ TurmaController.js
 http://localhost:3000/turmas?data_inicial=2020-01-01&data_final=2020-03-01
 ```
 - Com isso tu passou os valores para a  Query String, permitindo assim uma busca personalizada.
+
+# Funções Agregadoras
+
+- Ok O cliente gostaria de poder consultar as turmas abertas por intervalo de data, para não receber informações desnecessárias (como turmas antigas).
+
+- São os Finders do Sequelize, Documentação => https://sequelize.org/docs/v6/core-concepts/model-querying-finders/
+
+### Como resolver?
+
+- Tu pode usar o método findAll e passar um where e deixar o front fazer essa busca, mas não é uma boa prática
+- Por isso tu vai usar o método findAndCountAll
+Exemplo
+PessoaController.js
+```js
+  static async pegaMatriculasPorTurma(req, res) {
+    const { turmaId } = req.params;
+    try {
+      const todasAsMatriculas = await database.Matriculas.findAndCountAll({
+        where: {
+          turma_id: Number(turmaId),
+          status: "confirmado",
+        },
+      });
+      return res.status(200).json(todasAsMatriculas);
+    } catch (error) {
+      return res.status(500).json(error.message);
+    }
+  }
+```
+- Note que tu criou um where dentro do findAndCountAll e criou um where com o nome da coluna da tabela, e o nome do valor q tu está recebendo do params
+- Mas eu poderia fazer isso usando um where fora por q fazer dessa forma?
+- Porque esse método além de fazer a busca vai te retornar um OBJETO com um valour de COUNTS = quantidade de resultados da busca
+- E vai retornar ROWS que vai ser um objeto com a quantidade de dados filtrados
+
+#### Por isso tu também pode adicionar outros parametros para a busca dentro desse méotodo como o limit
+- O limit determina a quantidade de limite que pode ser trazido por vez do banco, isso melhora a perfomance
+
+- Tu também por Ordenar os resultados com o ASC para resultados por ordem Ascdente e DESC para ordenar por ordem Descendente
+
+PessoaController.js
+```js
+  static async pegaMatriculasPorTurma(req, res) {
+    const { turmaId } = req.params;
+    try {
+      const todasAsMatriculas = await database.Matriculas.findAndCountAll({
+        where: {
+          turma_id: Number(turmaId),
+          status: "confirmado",
+        },
+        limit: 20,
+        order: [['estudante_id', 'ASC']]
+      });
+      return res.status(200).json(todasAsMatriculas);
+    } catch (error) {
+      return res.status(500).json(error.message);
+    }
+  }
+```
+- Com o exemplo acima, tu definiu um limite de 20 resultados em ordem Ascendente
+
+#### IMPORTANTE
+
+- TU usar limit não vai diminuir a quantidade de COUNTS, ele vai buscar em TODOS OS ITEMS, mas só vai retornar o valor do LIMIT. Por exemplo em uma lista de 500 resultados, ele vai buscar em TODOS OS 500, mas vai retornar apenas os primeiros 20, assim melhorando a perfomance.
+
+
+#### Cria a rota
+pessoasRoute.js
+```js
+  .get('/pessoas/matricula/:turmaId/confirmados', PessoaController.pegaMatriculasPorTurma)
+```
