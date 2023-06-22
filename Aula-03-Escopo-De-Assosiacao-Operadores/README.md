@@ -104,4 +104,66 @@ Models/pessoas.js
 
 ### Se tiver dúvidas sobre o mixin dê uma lida na documentação => https://sequelize.org/docs/v6/core-concepts/assocs/
 
-### Para saber mais Mixins =: 
+### Para saber mais Mixins => https://cursos.alura.com.br/course/orm-nodejs-avancando-sequelize/task/79567
+
+# Usando Operadores
+
+- Resolvendo o Problema => O cliente gostaria de poder consultar as turmas abertas por intervalo de data, para não receber informações desnecessárias (como turmas antigas).
+
+- 
+
+### Como tu vai resolver isso lógica?
+
+- Relembrando o SQL tu pode usar Query Strings para fazer isso
+- Mas o que são query Strings?
+- São Querys personalizadas que tu vai passar um parametro para filtrar a busca, dê uma relembrada no SQL
+- Exemplo de uma Query String => localhost:3000/turmas?data_inicial-2020-01-01&data_final=2020-03-01
+
+- no curso e no ORM tu vai resolver o problema usando operadores para fazer essa query string!
+- Documentação sobre Operadores do MYSQL => https://dev.mysql.com/doc/refman/8.0/en/non-typed-operators.html
+- Documentação sobre Operadores do Sequelize => https://sequelize.org/docs/v6/core-concepts/model-querying-basics/
+
+
+### Resolvendo no código
+
+- O Op do Sequelize precisa ser importado
+TurmaController.js
+```js
+const Sequelize = require('sequelize')
+const Op = Sequelize.Op;
+
+ ```
+- Tu vai fazer essa lógica no Controller
+
+#### Criando a query string e os operadores do Sequelize
+
+TurmaController.js
+```js
+  static async pegaTodasAsTurmas(req, res){
+    const {data_inicial, data_final} = req.query // Pegando os valores da query String = os valores que vem dps do ?
+      const where = {} // Ele começa como vazio
+      data_inicial || data_final ? where.data_inicio = {} : null // Se a data Inicial existir, o where recebe  valor da data inicial
+      data_inicial ? where.data_inicio[Op.gte] = data_inicial : null // Se a Data Inicial for maior que a data final, o where vai receber a data inicial
+      data_final ? where.data_inicio[Op.lte] = data_final : null // Se a Data final for maior que a data inicial, o where recebe a data final
+    try {
+
+      const todasAsTurmas = await database.Turmas.findAll({ where }) // Como parametro para o where tu está passando o where que é o filto que está recebendo a lógica acima
+      return res.status(200).json(todasAsTurmas) 
+    } catch (error) {
+      return res.status(500).json(error.message)
+    }
+  }
+```
+- Importante => Prestar atenção que data_inicio se refere ao valor da COLUNA no MODEL
+- NÃO confundir con o data_inicial que é o valor que tu pega como PARAMETRO DA QUERY STRING
+- NOTE que a lógica que você tá usando, tu está ATRIBUINDO os valores que tu pegou NA QUERY STRING, nas COLUNAS da TABELA com o WHERE, assim permitindo que tu faça uma busca PERSONALIZADA.
+- Da forma que tu criou o método acima, tu fez uma lógica usando operadores e ifs ternários para filtrar a busca
+- Lembrando que tu usou os Operadores do Sequelize para fazer a lógica
+- Tem que lembrar que tu precisa abrir os {} no find all e passar o parametro
+- Da forma como tu criou o método, ele sempre vai retornar um valor, mesmo que seja nulo.
+
+#### Para testar o código acima no PostMan use:
+```
+http://localhost:3000/turmas?data_inicial=2020-01-01&data_final=2020-03-01
+```
+- Com isso tu passou os valores para a  Query String, permitindo assim uma busca personalizada.
