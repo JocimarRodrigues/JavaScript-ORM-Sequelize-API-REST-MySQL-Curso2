@@ -172,3 +172,7 @@ try {
 - A outra forma, como fizemos acima, foi utilizando transações gerenciadas (managed transactions) onde toda a operação a ser feita no banco é passada como callback do método sequelize.transaction(). Nesse caso, e como foi feito no código do nosso projeto, não há a necessidade de adicionar manualmente os métodos t.commit() e t.rollback().
 
 - Link documentação sobre Transações => https://sequelize.org/docs/v6/other-topics/transactions/
+
+# Correções no Versionamento
+
+- Na aula estava tendo um erro, que era sobre o operatorAliases que estva dando warning, mas tu já tinha removido no começo do projeto, se encontrar esse warking em projetos futuros, pode remover essa linha, ela fica em api/config/config.json
