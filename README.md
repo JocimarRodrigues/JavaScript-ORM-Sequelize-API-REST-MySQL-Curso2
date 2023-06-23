@@ -14,3 +14,7 @@
 - Finders Sequelize => https://sequelize.org/docs/v6/core-concepts/model-querying-finders/
 
 - Grouping Sequelize => https://sequelize.org/docs/v6/core-concepts/model-querying-basics/
+
+- Ordem de Execução SQL => https://cursos.alura.com.br/course/orm-nodejs-avancando-sequelize/task/79570
+
+- Artigo em inglês explicando Ordem de execução SQL => https://jvns.ca/blog/2019/10/03/sql-queries-don-t-start-with-select/
