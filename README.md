@@ -12,3 +12,5 @@
 - Documentação sobre Operadores do MYSQL => https://dev.mysql.com/doc/refman/8.0/en/non-typed-operators.html
 
 - Finders Sequelize => https://sequelize.org/docs/v6/core-concepts/model-querying-finders/
+
+- Grouping Sequelize => https://sequelize.org/docs/v6/core-concepts/model-querying-basics/

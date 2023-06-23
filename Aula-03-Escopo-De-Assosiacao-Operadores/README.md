@@ -237,3 +237,58 @@ pessoasRoute.js
 ```js
   .get('/pessoas/matricula/:turmaId/confirmados', PessoaController.pegaMatriculasPorTurma)
 ```
+
+## Outros agregadores
+
+- Você já criou o método para pegar todas as matriculas por turma, agora tu precisa criar um método para exibir só as turmas que estão lotadas, para isso tu vai usar outro método
+
+- Tu vai usar o GROUPING para fazer isso, documentação Sequelize => https://sequelize.org/docs/v6/core-concepts/model-querying-basics/
+
+- Tu vai precisar usar SQL puro para fazer esse filtro
+
+### Sequelize Literal
+- É a forma que tu escreve SQL puro no Sequelize
+- Lembrar que tu precisa importar isso no começo do Controller
+```js
+const Sequelize = require('sequelize')
+```
+
+Exemplo
+PessoasController.js
+```js
+  static async pegaTurmasLotadas(req, res) {
+    const lotacaoTurma = 2 // Tu criou a variável para definir o limite para a turma estar lotada
+    try {
+      const turmasLotadas = await database.Matriculas.findAndCountAll({
+        where: { // Usou um where para pegar apenas as turmas com status confirmado
+          status: 'confirmado'
+        },
+        attributes: ['turma_id'], // Definiu a coluna que tu quer filtrar
+        group: ['turma_id'], // Agrupa todas as turmas que tem o mesmo valor de turma_id
+        having: Sequelize.literal(`COUNT(turma_id) >= ${lotacaoTurma}`) // Usando SQL puro para fazer o filtro
+      })
+      return res.status(200).json(turmasLotadas.count)
+    } catch (error) {
+      return res.status(500).json(error.message);
+    }
+  }
+```
+
+#### Group
+
+- O group é necessário para especificar qual coluna ou conjunto de colunas deve ser usado para agrupar os resultados da consulta. Nesse caso, o código está agrupando os resultados pela coluna turma_id, ou seja, todas as matrículas que possuem o mesmo valor de turma_id serão agrupadas juntas.
+
+#### Having
+
+- é utilizada com a função COUNT(turma_id) >= ${lotacaoTurma} para filtrar os grupos que possuem uma contagem de turma_id maior ou igual ao valor definido em lotacaoTurma (2, no exemplo).
+
+### Feito os passos acima, basta criar a rota
+pessoasRoute.js
+```js
+  .get('/pessoas/matricula/lotada', PessoaController.pegaTurmasLotadas)
+```
+
+#### Por que tu não passou parametros para essa rota?
+
+- Como o filtro que tu está fazendo é direto no SQl, dentro do Controller, tu não precisa passar parametros
+- Resumindo, como tu está passando o lotacaoTurma = 2 q é o responsável por fazer o filtro, é desnecessário tu receber um parametro do front
