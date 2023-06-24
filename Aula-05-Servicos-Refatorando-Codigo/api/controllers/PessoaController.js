@@ -1,5 +1,5 @@
-const Services = require('../services/Services.js')
-const pessoasServices = new Services('Pessoas')
+const { PessoasServices } = require('../services')
+const pessoasServices = new PessoasServices();
 
 const database = require("../models");
 const Sequelize = require("sequelize");
