@@ -194,3 +194,123 @@ const pessoasServices = new PessoasServices();
 
 - Note que tu não não precisa mais importar o Services geral
 - E tu também não precisa mais definir qual modelo para o PessoasServices no controller, porque isso já está sendo feito lá dentro do PessoasServices.
+
+## Herdando Serviços
+
+- Tu pode tirar as responsabilidades do Controller e passar ela para o Services, e depois heradar elas no Controller, olhe o exemplo abaixo.
+
+#### Sem Herdar os Serviços
+
+PessoasServices.js
+```js
+  async pegaRegistrosAtivos(where = {}) {
+    return database[this.nomeDoModelo].findAll({ where: { ...where } });
+  }
+
+  async pegaTodosOsRegistros(where = {}) {
+    return database[this.nomeDoModelo]
+      .scope("todos")
+      .findAll({ where: { ...where } });
+  }
+```
+
+- Olhe o Controller
+PessoaController.js
+```js
+  static async pegaPessoasAtivas(req, res) {
+    try {
+      const pessoasAtivas = await pessoasServices.pegaTodosOsRegristros();
+       return res.status(200).json(pessoasAtivas);
+    } catch (error) {
+      return res.status(500).json(error.message);
+    }
+  }
+
+  static async pegaTodasAsPessoas(req, res) {
+    try {
+      const todasAsPessoas = await database.Pessoas.scope("todos").findAll();
+      return res.status(200).json(todasAsPessoas);
+    } catch (error) {
+      return res.status(500).json(error.message);
+    }
+  }
+```
+
+### O que você vai fazer é tirar a responsabilidade do controller de criar os métodos e jogar esses métodos para o Services, olhe como vai ficar
+
+#### Herdando os Serviços
+
+PessoasServices.js
+```js
+  async pegaRegistrosAtivos(where = {}) {
+    return database[this.nomeDoModelo].findAll({ where: { ...where } });
+  }
+
+  async pegaTodosOsRegistros(where = {}) {
+    return database[this.nomeDoModelo]
+      .scope("todos")
+      .findAll({ where: { ...where } });
+  }
+```
+
+- Note a diferença que vai ficar no Controller
+
+```js
+  static async pegaPessoasAtivas(req, res) {
+    try {
+      const pessoasAtivas = await pessoasServices.pegaRegistrosAtivos(); // Aqui
+       return res.status(200).json(pessoasAtivas);
+    } catch (error) {
+      return res.status(500).json(error.message);
+    }
+  }
+
+  static async pegaTodasAsPessoas(req, res) {
+    try {
+      const todasAsPessoas = await pessoasServices.pegaTodosOsRegistros(); // Aqui
+      return res.status(200).json(todasAsPessoas);
+    } catch (error) {
+      return res.status(500).json(error.message);
+    }
+  }
+```
+
+- Note que tu tirou toda a responsabilidade de criar o método dentro do Controller e passou essa responsabilidade para o Service referente a ele, com isso tu otimiza o código e deixa mais fácil a manunteção e escabilidade dele.
+
+### - IMPORTANTE: Note que como tu está criando os métodos no seu Services agora, tu também precisa importar os models, para ele poder funcionar, não esqueça.
+
+- Exemplo do código completo e funcionando do PessoasServices.js
+PessoasServices.js
+```js
+const Services = require("./Services");
+const database = require('../models') // Não esquecer disso aqui. :)
+
+class PessoasServices extends Services {
+  constructor() {
+    super("Pessoas");
+  }
+
+  // Métodos específicos do controlador de Pessoas
+
+  async pegaRegistrosAtivos(where = {}) {
+    return database[this.nomeDoModelo].findAll({ where: { ...where } });
+  }
+
+  async pegaTodosOsRegistros(where = {}) {
+    return  database[this.nomeDoModelo]
+      .scope("todos")
+      .findAll({ where: { ...where } });
+  }
+}
+
+module.exports = PessoasServices;
+
+```
+
+## Feito os passos acima, não esqueça de atualizar as rotas.
+Routes/pessoasRoute.js
+```js
+  .get('/pessoas', PessoaController.pegaTodasAsPessoas)
+  .get('/pessoas/ativas', PessoaController.pegaPessoasAtivas)
+```
+
