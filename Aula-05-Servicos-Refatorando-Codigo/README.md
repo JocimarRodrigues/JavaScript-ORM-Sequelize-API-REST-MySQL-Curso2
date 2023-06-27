@@ -341,4 +341,137 @@ Alternativa correta! Para manter a estrutura da aplicação organizada, é ideal
 Alternativa correta! O controlador perdeu a responsabilidade de se conectar aos modelos; agora é encarregado de passar para o serviço correspondente as informações que ele precisa passar para a query (através dos parâmetros), receber o retorno e tratar os resultados.
 ```
 
+# Passando Parametros
 
+- Vamos ver, por exemplo, como ficaria essa refatoração do controlador para o serviço no método cancelaPessoa, que foi o último método que criamos dentro de pessoaController. Por que justamente esse? Porque além dele estar chamando update em duas tabelas diferentes, ainda envolvemos tudo com uma transação, então como vamos fazer para tirar isso tudo do controlador e passar para um serviço mais genérico, digamos assim?
+
+
+- Primeiro tu cria esse Service
+Services/Services.js
+```js
+  async atualizaRegistro(dadosAtualizados, id, transacao = {}) {
+    return database[this.nomeDoModelo].update(dadosAtualizados, {where: { id: Number(id)}}, transacao)
+  }
+```
+
+- Vamos então escrever esse método. Ele vai retornar database[this.nomeDoModelo]update. O que é update, o método update do sequelize recebe? Primeiro parâmetro que ele recebe é dadosAtualizados. O segundo é onde, no caso é o id, então aqui passamos como um where, abro um objeto where e o valor dele vai ser id:id. E além disso vou passar para atualizaRegistro um parâmetro que vai ser transação, iniciando com um objeto vazio, e dentro de update vou passar como terceiro parâmetro transação.
+
+- O que vai acontecer aqui? Vamos conseguir usar atualizaRegistro com ou sem transação, porque se não tiver nenhuma transação o sequelize não vai passar isso para frente e se tiver ele vai passar com as informações que ele vai receber do call-back de sequelize.transaction.
+
+#### Método um pouco mais específico que recebe um where
+
+- Além desse método atualizaRegistro que atualiza um registro baseado no id, vamos precisar também de um um pouco mais específico, que receba um where e aí faça alteração de todas as linhas onde where se aplica. Vou copiar o método atualizaRegistro e vou colar embaixo, que o outro vai ser bem parecido, vou chamar de atualizaRegistros, porque ao invés de um id único ele vai receber um where. Então vou passar o where como parâmetro.
+
+Services/Services.js
+```js
+  async atualizaRegistros(dadosAtualizados, where, transacao = {}) {
+    return database[this.nomeDoModelo].update(dadosAtualizados, {where: {...where }}, transacao)
+  }
+```
+
+- A única alteração que vamos fazer no update é que ao invés do where receber um id:id ele vai receber um spread de where. Como vamos usar esse método? Vamos passar como parâmetro do where o objeto onde ele vai montar as condições do where onde ele vai procurar os registros nas tabelas e fazer as atualizações.
+
+### REspeitando as boas práticas o Ideal agora é tu ir em Pessoas Services e criar o Service referente ao Controller
+
+## Lembrando que como tu vai usar Dois Modelos no Services, tu precisa importar o OUTRO modelo também no Service de Pessoas.
+Services/PessoasServices.js
+```js
+const Services = require("./Services");
+const database = require('../models')
+
+class PessoasServices extends Services {
+  constructor() {
+    super("Pessoas")
+    this.matriculas = new Services('Matriculas') // Aqui
+  }
+}
+```
+- Essa é a forma que tu faz para usar dois Modelos em um mesmo Service
+
+### Feito isso tu pode escrever o método agora no Services de Pessoas, usando os dois modelos
+Services/PessoasServices.js
+```js
+  async cancelaPessoaEMatriculas(estudanteId) {
+    return database.sequelize.transaction(async (transacao) => {
+      await super.atualizaRegistro({ ativo: false }, estudanteId, {
+        transaction: transacao,
+      });
+      await this.matriculas.atualizaRegistros(
+        { status: "cancelado" },
+        { estudante_id: estudanteId },
+        { transaction: transacao }
+      );
+    });
+  }
+```
+- Note que tu está usando os métodos Gerais que tu criou lá no Services.js
+
+#### Explicando sobre o que está acontecendo
+- A primeira coisa é fazer a atualização na tabela de pessoas, então await super.atualizaRegistro, e os parâmetros que vamos passar são parecidos com os que já estão sendo passados no controlador.
+
+- O primeiro é o que vai ser alterado, que é ativo um objeto contendo ativo false. O segundo é onde vai ser alterado, que podemos passar só como estudanteId, e o terceiro é um objeto contendo transaction: transacao, que é como estamos avisando no controlador que esse update faz parte de uma transação, ele está envolvido, está dentro de uma transação e faz parte de uma operação só.
+
+- Já atualizamos na tabela pessoas, para atualizar em seguida na tabela matrículas await this.matriculas, que é como estamos recebendo matrículas lá no construtor, e atualizaRegistros.
+
+- Novamente, os parâmetros de atualizaRegistros vão ser parecidos com o que já estamos usando no controlador atualmente, que primeiro é o que vai ser alterado, status cancelado. Where, só que não precisamos escrever where e dentro do where passar. Podemos passar só o objeto estudante_id, que é o nome da coluna, igual a estudanteId, que estamos recebendo por parâmetro.
+
+- Nós vamos montar o where dentro de atualizaRegistros só passando o conteúdo dele. Não precisamos escrever where, só precisamos escrever o que vai dentro dele.
+
+- O terceiro parâmetro é também avisar que tem uma transação rolando aqui com transaction:transacao. Nosso método está criado, faltou só fechar os parênteses do meu método. E agora refatorar o controlador, o método cancelaPessoa no controlador de pessoas passando o que acabamos de criar dentro de serviços. Substituindo todos esses updates pelo que acabamos de fazer.
+
+#### O código acima é o mesmo que este, mas REFATORADO.
+Controller/PessoaController.js
+```js
+  static async cancelaPessoa(req, res) {
+    const { estudanteId } = req.params;
+    try {
+      database.sequelize.transaction(async (transacao) => {
+        
+        await database.Pessoas.update(
+          { ativo: false },
+          { where: { id: Number(estudanteId) } },
+          {transaction: transacao}
+        );
+        await database.Matriculas.update(
+          { status: "cancelado" },
+          { where: { estudante_id: Number(estudanteId) } },
+          {transaction: transacao}
+        );
+        return res
+          .status(200)
+          .json({
+            message: `Matriculas referente estudante ${estudanteId} canceladas!`,
+          });
+      } )
+    } catch (error) {
+      return res.status(500).json(error.message);
+    }
+  }
+```
+
+## Refatorando Controller
+Controller/PessoaController.js
+
+```js
+  static async cancelaPessoa(req, res) {
+    const { estudanteId } = req.params;
+    try {
+      await pessoasServices.cancelaPessoaEMatriculas(Number(estudanteId));
+      return res.status(200).json({
+        message: `Matriculas referente estudante ${estudanteId} canceladas!`,
+      });
+    } catch (error) {
+      return res.status(500).json(error.message);
+    }
+  }
+```
+
+- Note que com isso tu tirou a responsabilidade de lidar com os Modelos do Controller
+- O Código ficou menor e mais fácil de fazer manutenção
+- Dá para ver inclusive que tanto o método no controlador quanto no serviço estão mais claros, é mais rápido de entender, de visualizar o que tecendo em cada um deles, ficou tudo mais separado. É isso sempre que temos que buscar quando fazemos esse tipo de refatoração e quando fazemos a separação entre serviços, controladores, separar entre arquivos, etc.
+
+# Boas Práticas
+
+### A ideia é que um Controller não se conecte com o Modelo, faça apenas o controle, quem deve se conectar com o Modelo é o Service referente ao Controller.
+
+### Também Não é ideal um Crontoller lidar com mais de um Serviço, o ideal é um controlador lidar apenas com o Seu serviço, EX o Controlador de Pessoas só ter contato com o PessoasServices.js
